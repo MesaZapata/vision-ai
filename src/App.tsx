@@ -1,10 +1,11 @@
-import "./App.css";
-import { UploadFile } from "./modules/vision";
+import './App.css'
 
 export const App = () => {
+
   return (
     <>
-      <UploadFile />
     </>
-  );
-};
+  )
+}
+
+
