@@ -1,12 +1,17 @@
 import { useState } from "react";
 
-export const UploadFile = () => {
+interface UploadFileProps {
+  onFileChange: (file: File) => void;
+}
+
+export const UploadFile = ({onFileChange}: UploadFileProps) => {
   const [fileName, setFileName] = useState<string | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setFileName(file.name);
+      onFileChange(file);
 
       console.log(file);
     }
