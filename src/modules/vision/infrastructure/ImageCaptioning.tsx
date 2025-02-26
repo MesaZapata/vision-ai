@@ -1,7 +1,23 @@
 import { pipeline } from "@huggingface/transformers";
 
-export const ImageCaptioning = () => {
+interface ImageCaptioningProps {
+  file: File | null;
+}
+
+export const ImageCaptioning = ({file}: ImageCaptioningProps) => {
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const initializeModel = async () => {
+    if (!file) return;
+
     const status = document.getElementById("status") as HTMLElement;
 
     status.textContent = "Loading model...";
@@ -10,9 +26,9 @@ export const ImageCaptioning = () => {
       "image-to-text",
       "Xenova/vit-gpt2-image-captioning"
     );
-    const url =
-      "https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/cats.jpg";
-    const output = await captioner(url);
+    
+    const base64Image = await fileToBase64(file);
+    const output = await captioner(base64Image);
     status.textContent = "Ready";
 
     console.log(output);
