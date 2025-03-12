@@ -1,80 +1,94 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { pipeline } from "@huggingface/transformers";
 import { useState } from "react";
+import {
+  Florence2ForConditionalGeneration,
+  AutoProcessor,
+  AutoTokenizer,
+  RawImage,
+} from "@huggingface/transformers";
+import { AudioGeneration } from "@/modules/textToAudio/infrastructure/textToAudio";
 
 interface ImageCaptioningProps {
   file: File | null;
 }
 
-interface CaptionOutput {
-  generated_text: string;
-}
-
 export const ImageCaptioning = ({ file }: ImageCaptioningProps) => {
   const [caption, setCaption] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [statusMessage, setStatusMessage] = useState<string>("");
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  const initializeModel = async () => {
+  const generateCaption = async () => {
     if (!file) return;
 
-    const status = document.getElementById("status") as HTMLElement;
-
-    status.textContent = "Loading model...";
+    setStatusMessage("Cargando modelo Florence-2...");
+    setIsProcessing(true);
 
     try {
-      const captioner = await pipeline(
-        "image-to-text",
-        "Xenova/vit-gpt2-image-captioning"
-      );
+      const model_id = "onnx-community/Florence-2-base-ft";
+      const model = await Florence2ForConditionalGeneration.from_pretrained(model_id, { dtype: "fp32" });
+      const processor = await AutoProcessor.from_pretrained(model_id);
+      const tokenizer = await AutoTokenizer.from_pretrained(model_id);
 
-      const base64Image = await fileToBase64(file);
-      const output = await captioner(base64Image);
+      const imageUrl = URL.createObjectURL(file);
+      const image = await RawImage.fromURL(imageUrl);
+      
+      const vision_inputs = await processor(image);
+      
+      const task = "<MORE_DETAILED_CAPTION>";
+      const prompts = processor.construct_prompts(task);
+      const text_inputs = tokenizer(prompts);
+      
+      setStatusMessage("Generando descripción...");
+      
+      const generated_ids = await model.generate({
+        ...text_inputs,
+        ...vision_inputs,
+        max_new_tokens: 100,
+      });
+      
+      const generated_text = tokenizer.batch_decode(generated_ids, { skip_special_tokens: false })[0];
+      
+      const result = processor.post_process_generation(generated_text, task, image.size);
 
-      status.textContent = "Ready";
-
-      console.log("Output:", output);
-
-      const captions = output as CaptionOutput[];
-
-      if (Array.isArray(captions) && captions.length > 0) {
-        if ("generated_text" in captions[0]) {
-          setCaption(captions[0].generated_text);
-        } else {
-          console.error("generated_text property not found in output:", captions[0]);
-          setCaption("Error: Caption not found.");
-        }
+      console.log("Result:", result);
+      console.log("Generated text:", generated_text);
+      
+      
+      
+      URL.revokeObjectURL(imageUrl);
+      
+      if (result && result["<MORE_DETAILED_CAPTION>"]) {
+        setCaption(result["<MORE_DETAILED_CAPTION>"]);
+        setStatusMessage("Descripción generada");
       } else {
-        console.error("Output is not an array or is empty:", output);
-        setCaption("Error: No caption generated.");
+        setCaption("Error: No se pudo generar una descripción.");
+        setStatusMessage("Error al generar descripción");
       }
     } catch (error) {
-      console.error("Error in initializeModel:", error);
-      status.textContent = "Error loading model";
+      console.error("Error in generateCaption:", error);
       setCaption("Error: Failed to generate caption.");
+      setStatusMessage("Error al cargar Florence-2");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return (
-    <>
-      <div>
-        <Card>
-           <p>{caption ? caption : "No caption generated yet."}</p>
-        </Card>
-        <Button onClick={initializeModel} variant="secondary">
-          Load Model
+    <div className="space-y-4">
+      <Card className="p-4">
+        <h3 className="text-lg font-medium mb-2">Descripción:</h3>
+        <p className="mb-4">{caption ? caption : "No se ha generado ninguna descripción."}</p>
+        {caption && <AudioGeneration caption={caption} />}
+      </Card>
+
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={generateCaption} variant="default" disabled={isProcessing || !file}>
+          Generar descripción
         </Button>
-        <p id="status"></p>
-        
       </div>
-    </>
+      
+      <p className="text-sm">{statusMessage}</p>
+    </div>
   );
 };
