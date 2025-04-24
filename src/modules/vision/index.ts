@@ -1,3 +1,3 @@
 export * from './infrastructure/ImageCaptioning';
-export * from './ui/SelectButton';
+export * from './ui/Hero';
 export * from './ui/UploadFile';

@@ -16,7 +16,7 @@ export const AudioGeneration = ({ caption }: AudioGenerationProps) => {
         const model_id = "onnx-community/Kokoro-82M-ONNX";
         const tts = await KokoroTTS.from_pretrained(model_id, { dtype: "q8" });
         const audioBuffer = await tts.generate(caption, { voice: "af_bella" });
-        const blob = new Blob([audioBuffer], { type: "audio/wav" });
+        const blob = audioBuffer.toBlob();
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
       } catch (error) {

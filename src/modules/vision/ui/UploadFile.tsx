@@ -20,7 +20,7 @@ export const UploadFile = ({ onFileChange }: UploadFileProps) => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-[100vh]">
+    <div className="flex justify-center items-center min-h-[35vh]">
       <Card className="w-full max-w-md">
       <CardContent className="p-10">
         <div className="flex flex-col items-center gap-4">

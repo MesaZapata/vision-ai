@@ -1,2 +1,2 @@
-export * from './SelectButton';
+export * from './Hero';
 export * from './UploadFile';

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useState } from "react";
@@ -27,7 +28,7 @@ export const ImageCaptioning = ({ file }: ImageCaptioningProps) => {
     try {
       const model_id = "onnx-community/Florence-2-base-ft";
       const model = await Florence2ForConditionalGeneration.from_pretrained(model_id, { dtype: "fp32" });
-      const processor = await AutoProcessor.from_pretrained(model_id);
+      const processor = await AutoProcessor.from_pretrained(model_id, {});
       const tokenizer = await AutoTokenizer.from_pretrained(model_id);
 
       const imageUrl = URL.createObjectURL(file);
@@ -36,7 +37,7 @@ export const ImageCaptioning = ({ file }: ImageCaptioningProps) => {
       const vision_inputs = await processor(image);
       
       const task = "<MORE_DETAILED_CAPTION>";
-      const prompts = processor.construct_prompts(task);
+      const prompts = (processor as any).construct_prompts(task);
       const text_inputs = tokenizer(prompts);
       
       setStatusMessage("Generando descripción...");
@@ -47,9 +48,9 @@ export const ImageCaptioning = ({ file }: ImageCaptioningProps) => {
         max_new_tokens: 100,
       });
       
-      const generated_text = tokenizer.batch_decode(generated_ids, { skip_special_tokens: false })[0];
+      const generated_text = tokenizer.batch_decode(generated_ids as any, { skip_special_tokens: false })[0];
       
-      const result = processor.post_process_generation(generated_text, task, image.size);
+      const result = (processor as any).post_process_generation(generated_text, task, image.size);
 
       console.log("Result:", result);
       console.log("Generated text:", generated_text);
@@ -76,11 +77,13 @@ export const ImageCaptioning = ({ file }: ImageCaptioningProps) => {
 
   return (
     <div className="space-y-4">
-      <Card className="p-4">
-        <h3 className="text-lg font-medium mb-2">Descripción:</h3>
-        <p className="mb-4">{caption ? caption : "No se ha generado ninguna descripción."}</p>
-        {caption && <AudioGeneration caption={caption} />}
-      </Card>
+      {caption && (
+        <Card className="p-4">
+          <h3 className="text-lg font-medium mb-2">Descripción:</h3>
+          <p className="mb-4">{caption}</p>
+          <AudioGeneration caption={caption} />
+        </Card>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={generateCaption} variant="default" disabled={isProcessing || !file}>
